@@ -37,7 +37,7 @@ environment_variables:
     description: "Only needed if STT_PROVIDER=cloudera_whisper."
     required: false
   CAII_STT_MODEL_NAME:
-    default: ""
+    default: "nvidia/riva-asr/whisper"
     description: "Only needed if STT_PROVIDER=cloudera_whisper. The exact model name your Whisper/Riva endpoint expects."
     required: false
   CAII_BASE_URL:

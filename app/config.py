@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     # deployment from the LLM above, so it gets its own base URL/model name)
     caii_stt_base_url: str = ""  # e.g. https://<domain>/namespaces/serving-default/endpoints/<whisper-endpoint>/v1
     caii_stt_api_key: str = ""
-    caii_stt_model_name: str = ""  # confirm the exact model name your endpoint expects
+    caii_stt_model_name: str = "nvidia/riva-asr/whisper"
 
     # Mock customer data
     customer_db_path: str = "app/data/customers.db"

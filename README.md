@@ -100,11 +100,10 @@ persistent connection. This means:
 - STT runs entirely on Cloudera AI alongside the LLM — only TTS (Cartesia)
   and telephony (Twilio) remain external.
 
-To use it, set `STT_PROVIDER=cloudera_whisper` plus `CAII_STT_BASE_URL`,
-`CAII_STT_API_KEY`, and `CAII_STT_MODEL_NAME` (a separate endpoint/model from
-the LLM's `CAII_BASE_URL`) — see `.env.example`. **Confirm the exact model
-name your endpoint expects** before relying on it; it was left unset rather
-than guessed.
+To use it, set `STT_PROVIDER=cloudera_whisper` plus `CAII_STT_BASE_URL` and
+`CAII_STT_API_KEY` (a separate endpoint from the LLM's `CAII_BASE_URL`) — see
+`.env.example`. `CAII_STT_MODEL_NAME` defaults to `nvidia/riva-asr/whisper`;
+override it if your deployment registers the model under a different name.
 
 ## Setting up the external services
 
