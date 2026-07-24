@@ -1,0 +1,70 @@
+name: Telecom Voice AI Agent Demo
+description: >
+  Receives phone calls via Twilio, transcribes them in real time with Deepgram
+  (swappable to Cartesia), looks up the caller's account in a mock telecom
+  customer dataset by phone number, generates a response with a Llama 3.1 8B
+  model served by Cloudera AI Inference Service, and speaks the reply back to
+  the caller with Cartesia TTS -- entirely orchestrated from a single CML
+  Application.
+author: Cloudera AI Demo
+specification_version: 1.0
+prototype_version: 1.0
+date: "2026-07-23"
+
+environment_variables:
+  TWILIO_AUTH_TOKEN:
+    default: ""
+    description: "Auth token from the Twilio console; used to validate incoming /voice webhook signatures."
+    required: true
+  DEEPGRAM_API_KEY:
+    default: ""
+    description: "Deepgram API key for streaming speech-to-text (the default STT_PROVIDER)."
+    required: true
+  CARTESIA_API_KEY:
+    default: ""
+    description: "Cartesia API key, used for TTS always, and for STT once STT_PROVIDER is switched to 'cartesia'."
+    required: true
+  STT_PROVIDER:
+    default: "deepgram"
+    description: "Speech-to-text backend: 'deepgram' or 'cartesia'."
+    required: false
+  CAII_BASE_URL:
+    default: ""
+    description: "Base URL of the Cloudera AI Inference Service OpenAI-compatible endpoint for the deployed LLM, e.g. https://<domain>/namespaces/serving-default/endpoints/<endpoint>/v1"
+    required: true
+  CAII_API_KEY:
+    default: ""
+    description: "API key/token for the Cloudera AI Inference Service endpoint, if the endpoint requires one."
+    required: false
+  CAII_MODEL_NAME:
+    default: "meta/llama-3.1-8b-instruct"
+    description: "Model name as registered on the Cloudera AI Inference Service endpoint."
+    required: true
+  PUBLIC_BASE_URL:
+    default: ""
+    description: "Public HTTPS URL of this Application once created (e.g. https://voice-ai-agent.ml-xxxx.<workspace-domain>). Required so Twilio signature validation and the wss:// media-stream URL are computed correctly behind the CML proxy."
+    required: true
+
+tasks:
+  - type: run_session
+    name: Install dependencies
+    script: scripts/install_dependencies.py
+    kernel: python3
+    cpu: 1
+    memory: 2
+
+  - type: run_session
+    name: Seed mock customer dataset
+    script: scripts/seed_customer_data.py
+    kernel: python3
+    cpu: 1
+    memory: 2
+
+  - type: start_application
+    name: Voice AI Agent
+    subdomain: voice-ai-agent
+    script: run_app.py
+    kernel: python3
+    cpu: 2
+    memory: 4
+    bypass_authentication: true
