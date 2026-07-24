@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     twilio_validate_signature: bool = True
 
     # Provider selection
-    stt_provider: str = "deepgram"  # "deepgram" | "cartesia"
+    stt_provider: str = "deepgram"  # "deepgram" | "cartesia" | "cloudera_whisper"
     tts_provider: str = "cartesia"  # "cartesia"
 
     # Deepgram
@@ -32,6 +32,12 @@ class Settings(BaseSettings):
     caii_base_url: str = ""  # e.g. https://<domain>/namespaces/serving-default/endpoints/<endpoint>/v1
     caii_api_key: str = ""
     caii_model_name: str = "meta/llama-3.1-8b-instruct"
+
+    # Cloudera AI Inference Service -- Whisper/Riva STT endpoint (separate
+    # deployment from the LLM above, so it gets its own base URL/model name)
+    caii_stt_base_url: str = ""  # e.g. https://<domain>/namespaces/serving-default/endpoints/<whisper-endpoint>/v1
+    caii_stt_api_key: str = ""
+    caii_stt_model_name: str = ""  # confirm the exact model name your endpoint expects
 
     # Mock customer data
     customer_db_path: str = "app/data/customers.db"

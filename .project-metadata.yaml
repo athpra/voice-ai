@@ -26,7 +26,19 @@ environment_variables:
     required: true
   STT_PROVIDER:
     default: "deepgram"
-    description: "Speech-to-text backend: 'deepgram' or 'cartesia'."
+    description: "Speech-to-text backend: 'deepgram', 'cartesia', or 'cloudera_whisper'."
+    required: false
+  CAII_STT_BASE_URL:
+    default: ""
+    description: "Only needed if STT_PROVIDER=cloudera_whisper. Base URL of a Whisper/Riva model served on Cloudera AI Inference Service (a separate endpoint from CAII_BASE_URL), e.g. https://<domain>/namespaces/serving-default/endpoints/<whisper-endpoint>/v1"
+    required: false
+  CAII_STT_API_KEY:
+    default: ""
+    description: "Only needed if STT_PROVIDER=cloudera_whisper."
+    required: false
+  CAII_STT_MODEL_NAME:
+    default: ""
+    description: "Only needed if STT_PROVIDER=cloudera_whisper. The exact model name your Whisper/Riva endpoint expects."
     required: false
   CAII_BASE_URL:
     default: ""

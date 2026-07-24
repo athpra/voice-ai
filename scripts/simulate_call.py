@@ -33,22 +33,26 @@ from app.main import app  # noqa: E402
 FRAME_SAMPLES = 160  # 20ms @ 8000 Hz, matching Twilio's real chunking cadence
 
 
+_MULAW_SEG_END = [0xFF, 0x1FF, 0x3FF, 0x7FF, 0xFFF, 0x1FFF, 0x3FFF, 0x7FFF]
+_MULAW_BIAS = 0x84
+_MULAW_CLIP = 32635
+
+
 def _linear_to_mulaw_sample(sample: int) -> int:
     """Standard G.711 mu-law encoder for a single 16-bit signed PCM sample."""
-    mulaw_max = 0x1FFF
-    mulaw_bias = 33
-    sign = 0x00
+    sign = 0x80 if sample < 0 else 0x00
     if sample < 0:
         sample = -sample
-        sign = 0x80
-    sample += mulaw_bias
-    if sample > mulaw_max:
-        sample = mulaw_max
+    if sample > _MULAW_CLIP:
+        sample = _MULAW_CLIP
+    sample += _MULAW_BIAS
+
     exponent = 7
-    exp_mask = 0x4000
-    while exponent > 0 and not (sample & exp_mask):
-        exponent -= 1
-        exp_mask >>= 1
+    for i, seg_end in enumerate(_MULAW_SEG_END):
+        if sample <= seg_end:
+            exponent = i
+            break
+
     mantissa = (sample >> (exponent + 3)) & 0x0F
     return ~(sign | (exponent << 4) | mantissa) & 0xFF
 

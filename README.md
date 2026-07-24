@@ -17,15 +17,19 @@ CML Application (FastAPI, this repo)
   ├─ POST /voice          → TwiML: <Connect><Stream>
   ├─ WS   /media-stream    → orchestrates the call:
   │     1. look up caller by phone number → app/data/customers.db (mock data)
-  │     2. stream audio → STT provider (Deepgram, swappable to Cartesia)
+  │     2. stream audio → STT provider (Deepgram, or Cartesia, or a
+  │        Whisper/Riva model on Cloudera AI Inference Service)
   │     3. on final transcript → LLM on Cloudera AI Inference Service
   │     4. reply text → TTS provider (Cartesia) → audio back to Twilio
   └─ GET  /health
 ```
 
-Only the STT/TTS/telephony legs are external APIs (Twilio, Deepgram,
-Cartesia). The call orchestration and the LLM both run inside your Cloudera
-AI workbench.
+By default only the STT/TTS/telephony legs are external APIs (Twilio,
+Deepgram, Cartesia) — the call orchestration and the LLM run inside your
+Cloudera AI workbench. If you switch `STT_PROVIDER=cloudera_whisper`, STT
+runs on Cloudera AI too, leaving Cartesia TTS and Twilio telephony as the
+only pieces still outside it (Whisper doesn't do TTS, so a separate TTS
+service is still needed either way).
 
 ## What's real vs. mocked in this demo
 
@@ -45,7 +49,7 @@ app/
   config.py                env-driven settings
   call_session.py          per-call state (history, caller context)
   twilio_gateway.py         TwiML + signature validation + call orchestration
-  stt/                     STTProvider interface + Deepgram/Cartesia implementations
+  stt/                     STTProvider interface + Deepgram/Cartesia/Cloudera-Whisper implementations
   tts/                     TTSProvider interface + Cartesia implementation
   llm/cloudera_inference.py  OpenAI-compatible client against Cloudera AI Inference Service
   data/customer_lookup.py   phone-number lookup against the mock dataset
@@ -59,21 +63,48 @@ tests/
 run_app.py                 CML Application entrypoint (uvicorn on $CDSW_APP_PORT)
 ```
 
-## Provider swap: Deepgram → Cartesia (STT)
+## STT providers: Deepgram, Cartesia, or Cloudera AI Inference Service (Whisper)
 
-STT is behind `app/stt/base.py`'s `STTProvider` interface. Both
-`deepgram_provider.py` (active by default) and `cartesia_provider.py` are
-real implementations against each provider's documented streaming API — not
-a stub. Switching later is a config change, not a rewrite:
+STT is behind `app/stt/base.py`'s `STTProvider` interface, with three
+implementations. Switching is a config change, not a rewrite:
 
 ```
-STT_PROVIDER=cartesia
-CARTESIA_API_KEY=<your key>
+STT_PROVIDER=deepgram          # default — real-time streaming via Deepgram
+STT_PROVIDER=cartesia          # real-time streaming via Cartesia (needs CARTESIA_API_KEY)
+STT_PROVIDER=cloudera_whisper  # batch transcription via a Whisper/Riva model on Cloudera AI Inference Service
 ```
 
-`cartesia_provider.py` for STT hasn't been exercised against a live Cartesia
-account yet (no key was available while building this) — sanity-check it
-against a real call once you have one.
+`deepgram_provider.py` is the active, exercised path. `cartesia_provider.py`
+and `cloudera_whisper_provider.py` are real implementations (not stubs)
+against each provider's documented API, but neither has been exercised
+against a live account/endpoint yet — sanity-check them against a real call
+once you have credentials.
+
+**Why Cloudera-hosted Whisper works differently:** Deepgram and Cartesia
+expose a websocket you stream audio into continuously, getting transcripts
+back as you talk. Cloudera AI Inference Service's OpenAI-compatible API only
+exposes the standard batch `/v1/audio/transcriptions` endpoint (whole audio
+clip in, transcript out) — there's no streaming contract in that API shape,
+regardless of how fast the underlying model serving is. So
+`cloudera_whisper_provider.py` takes a different approach: it buffers each
+utterance locally, uses simple energy-based silence detection (tunable
+constants at the top of the file: `SILENCE_RMS_THRESHOLD`,
+`SILENCE_DURATION_MS`, `MIN_SPEECH_MS`) to decide when the caller has
+finished a sentence, then sends one HTTP request per turn instead of a
+persistent connection. This means:
+
+- Slightly higher latency per turn than Deepgram/Cartesia's live streaming
+  (an utterance isn't sent until ~700ms of trailing silence is detected).
+- No interim/partial transcripts — only a final one per utterance, which is
+  all the rest of the pipeline needs anyway.
+- STT runs entirely on Cloudera AI alongside the LLM — only TTS (Cartesia)
+  and telephony (Twilio) remain external.
+
+To use it, set `STT_PROVIDER=cloudera_whisper` plus `CAII_STT_BASE_URL`,
+`CAII_STT_API_KEY`, and `CAII_STT_MODEL_NAME` (a separate endpoint/model from
+the LLM's `CAII_BASE_URL`) — see `.env.example`. **Confirm the exact model
+name your endpoint expects** before relying on it; it was left unset rather
+than guessed.
 
 ## Setting up the external services
 
@@ -94,6 +125,10 @@ against a real call once you have one.
      (OpenAI-compatible — the app uses the standard `openai` SDK against it)
    - a model name to pass in requests (e.g. `meta/llama-3.1-8b-instruct`)
    - an API key/token, if your endpoint requires one
+5. **Optional — Whisper/Riva STT on Cloudera AI Inference Service**: if you
+   already have a Whisper-family model deployed as its own endpoint (separate
+   from the LLM above), you can use it instead of Deepgram/Cartesia for STT.
+   See "STT providers" above for how it's wired in and its tradeoffs.
 
 ## Deploying to CML
 
@@ -172,6 +207,10 @@ What still needs your credentials to verify:
   sentence-by-sentence, trading a bit of latency for simplicity. Cartesia's
   `context_id` mechanism supports incremental streaming if you want to
   optimize this later.
-- `cartesia_provider.py` (STT) is implemented against Cartesia's documented
-  API but unverified against a live account — confirm it once you have
-  `CARTESIA_API_KEY`.
+- `cartesia_provider.py` (STT) and `cloudera_whisper_provider.py` are
+  implemented against each provider's documented API but unverified against a
+  live account/endpoint — confirm them once you have credentials.
+- The silence-detection thresholds in `cloudera_whisper_provider.py`
+  (`SILENCE_RMS_THRESHOLD`, `SILENCE_DURATION_MS`, `MIN_SPEECH_MS`) are
+  heuristic starting points, not calibrated against a real phone line's noise
+  floor — expect to tune them once you're testing with actual calls.
