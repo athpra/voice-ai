@@ -56,6 +56,10 @@ environment_variables:
     default: ""
     description: "Public HTTPS URL of this Application once created (e.g. https://voice-ai-agent.ml-xxxx.<workspace-domain>). Required so Twilio signature validation and the wss:// media-stream URL are computed correctly behind the CML proxy."
     required: true
+  DEMO_PHONE_NUMBER:
+    default: ""
+    description: "Optional. Shown on the /dashboard idle screen only (e.g. +1 (256) 676-9589) -- purely cosmetic, not used for any call logic."
+    required: false
 
 tasks:
   - type: run_session

@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     # Server
     port: int = int(os.environ.get("CDSW_APP_PORT", os.environ.get("PORT", 8090)))
     public_base_url: str = ""  # e.g. https://voice-ai-agent.ml-xxxx.cloudera.site
+    demo_phone_number: str = ""  # shown on the /dashboard idle screen only, e.g. +1 (256) 676-9589
 
     # Twilio
     twilio_account_sid: str = ""

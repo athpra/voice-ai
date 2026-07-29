@@ -22,6 +22,11 @@ LAST_NAMES = [
     "Nguyen", "Garcia", "Smith", "Khan", "Muller", "Rossi", "Kim", "Patel", "Johnson", "Silva",
     "Kowalski", "Andersson", "Haile", "Tanaka", "Reyes", "Petrov", "Osei", "Ibrahim", "Rivera", "Dubois",
 ]
+CITIES = [
+    "Austin, Texas", "Denver, Colorado", "Chicago, Illinois", "Seattle, Washington",
+    "Miami, Florida", "Boston, Massachusetts", "Phoenix, Arizona", "Portland, Oregon",
+    "Atlanta, Georgia", "Minneapolis, Minnesota",
+]
 PLANS = [
     ("Basic 5GB", 5),
     ("Standard 15GB", 15),
@@ -35,6 +40,24 @@ TIERS = ["Bronze", "Silver", "Gold", "Platinum"]
 NUM_CUSTOMERS = 40
 SEED = 20260723  # deterministic so the demo dataset is reproducible across runs
 
+# A real record for live demo calls -- not synthetic, so the agent can greet
+# the actual caller by name with a genuine tenure/loyalty story.
+DEMO_CUSTOMER = {
+    "phone_number": "+18577578290",
+    "full_name": "Athul Prasad",
+    "account_status": "active",
+    "plan_name": "Unlimited Plus",
+    "monthly_data_gb": 100,
+    "data_used_gb": 42.3,
+    "last_bill_amount": 89.99,
+    "last_bill_paid": True,
+    "open_support_tickets": 0,
+    "loyalty_tier": "Platinum",
+    "contract_end_date": (date.today() + timedelta(days=210)).isoformat(),
+    "city": "San Francisco, California",
+    "customer_since_date": "2018-03-14",
+}
+
 
 def _phone_number(index: int) -> str:
     # Obviously-fake NANP numbers in the reserved 555 exchange.
@@ -43,11 +66,12 @@ def _phone_number(index: int) -> str:
 
 def build_customers() -> list[dict]:
     rng = random.Random(SEED)
-    customers = []
+    customers = [DEMO_CUSTOMER]
     for i in range(1, NUM_CUSTOMERS + 1):
         plan_name, plan_gb = rng.choice(PLANS)
         used = round(rng.uniform(0.1, plan_gb * 1.1), 1)
         contract_end = date.today() + timedelta(days=rng.randint(-60, 400))
+        customer_since = date.today() - timedelta(days=rng.randint(30, 3650))
         customers.append(
             {
                 "phone_number": _phone_number(i),
@@ -61,6 +85,8 @@ def build_customers() -> list[dict]:
                 "open_support_tickets": rng.choices([0, 1, 2, 3], weights=[60, 25, 10, 5])[0],
                 "loyalty_tier": rng.choice(TIERS),
                 "contract_end_date": contract_end.isoformat(),
+                "city": rng.choice(CITIES),
+                "customer_since_date": customer_since.isoformat(),
             }
         )
     return customers
@@ -86,7 +112,9 @@ def seed(db_path: str | None = None) -> str:
                 last_bill_paid INTEGER,
                 open_support_tickets INTEGER,
                 loyalty_tier TEXT,
-                contract_end_date TEXT
+                contract_end_date TEXT,
+                city TEXT,
+                customer_since_date TEXT
             )
             """
         )
@@ -103,10 +131,12 @@ def seed(db_path: str | None = None) -> str:
                 c["open_support_tickets"],
                 c["loyalty_tier"],
                 c["contract_end_date"],
+                c["city"],
+                c["customer_since_date"],
             )
             for c in build_customers()
         ]
-        conn.executemany("INSERT INTO customers VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows)
+        conn.executemany("INSERT INTO customers VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows)
         conn.commit()
     finally:
         conn.close()
@@ -115,5 +145,5 @@ def seed(db_path: str | None = None) -> str:
 
 if __name__ == "__main__":
     seeded_path = seed()
-    print(f"Seeded {NUM_CUSTOMERS} synthetic customers into {seeded_path}")
+    print(f"Seeded {NUM_CUSTOMERS + 1} customers (including 1 real demo record) into {seeded_path}")
     print(f"Sample lookup number: {_phone_number(1)}")
