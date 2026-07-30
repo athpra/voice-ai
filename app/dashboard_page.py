@@ -252,6 +252,8 @@ DASHBOARD_HTML = """<!doctype html>
         <div class="arrow">&rarr;</div>
         <div class="node" data-node="app" data-state="active"><div class="ring"><div class="core"></div></div><div class="label">App</div><div class="sub">Cloudera AI</div></div>
         <div class="arrow">&rarr;</div>
+        <div class="node" data-node="cdp" data-state="idle"><div class="ring"><div class="core"></div></div><div class="label">CDP</div><div class="sub">Customer data</div></div>
+        <div class="arrow">&rarr;</div>
         <div class="node" data-node="stt" data-state="idle"><div class="ring"><div class="core"></div></div><div class="label">STT</div><div class="sub">Cartesia</div></div>
         <div class="arrow">&rarr;</div>
         <div class="node" data-node="llm" data-state="idle"><div class="ring"><div class="core"></div></div><div class="label">LLM</div><div class="sub">Cloudera AI</div></div>
@@ -301,6 +303,7 @@ DASHBOARD_HTML = """<!doctype html>
     setNode("caller", "idle");
     setNode("twilio", "idle");
     setNode("app", "idle");
+    setNode("cdp", "idle");
     setNode("stt", "idle");
     setNode("llm", "idle");
     setNode("tts", "idle");
@@ -356,11 +359,13 @@ DASHBOARD_HTML = """<!doctype html>
         setNode("caller", "active");
         setNode("twilio", "active");
         setNode("app", "active");
+        setNode("cdp", "active");
         setNode("stt", "active");
         setNode("llm", "idle");
         setNode("tts", "idle");
         break;
       case "customer_identified":
+        setNode("cdp", "done");
         callerCardEl.classList.add("show");
         if (evt.known) {
           callerTagEl.textContent = "Recognized caller";
