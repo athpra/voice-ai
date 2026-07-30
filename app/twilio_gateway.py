@@ -24,13 +24,17 @@ LLM_FALLBACK_REPLY = "Sorry, I'm having a little trouble on my end -- could you 
 # How long to wait after a "final" transcript chunk before treating it as a
 # complete utterance. The STT provider's own is_final flag fires on a brief
 # pause in speech, not on the caller actually finishing their sentence, so
-# without this debounce the agent jumps in mid-sentence.
-UTTERANCE_DEBOUNCE_SECONDS = 0.7
+# without this debounce the agent jumps in mid-sentence. The "incomplete
+# trailing word" heuristic below only catches pauses on a preposition/
+# conjunction/article -- a pause after a complete-sounding clause while still
+# formulating the rest of the sentence is common and isn't caught by it, so
+# the base wait needs to be generous enough to cover that case on its own.
+UTTERANCE_DEBOUNCE_SECONDS = 1.1
 
 # If the caller trails off on a word like this ("...is there some way to"),
 # it's almost certainly not a finished thought -- wait longer before treating
 # it as complete, rather than applying the same short debounce to everything.
-UTTERANCE_DEBOUNCE_EXTENDED_SECONDS = 1.6
+UTTERANCE_DEBOUNCE_EXTENDED_SECONDS = 2.2
 _TRAILING_INCOMPLETE_WORDS = {
     # Articles, prepositions, and conjunctions that (almost) always need
     # something after them. Deliberately excludes pronouns like "it"/"you" --
