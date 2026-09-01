@@ -5,3 +5,4 @@ __pycache__/
 app/data/customers.db
 reply.mulaw
 .pytest_cache/
+.DS_Store
