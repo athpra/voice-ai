@@ -78,7 +78,7 @@ async def _create_completion(messages: list[dict], max_tokens: int, temperature:
     persistent failure."""
     kwargs: dict = {
         "model": settings.caii_model_name,
-        "messages": messages,
+        "messages": _with_thinking_directive(messages),
         "temperature": temperature,
         "frequency_penalty": _FREQUENCY_PENALTY,
     }
@@ -100,6 +100,29 @@ async def _create_completion(messages: list[dict], max_tokens: int, temperature:
             if attempt == 0:
                 await asyncio.sleep(0.5)
     raise last_exc
+
+
+def _with_thinking_directive(messages: list[dict]) -> list[dict]:
+    """Prepend the model's 'disable reasoning' directive as its own system
+    message when one is configured (see settings.caii_thinking_directive)."""
+    if not settings.caii_thinking_directive:
+        return messages
+    return [{"role": "system", "content": settings.caii_thinking_directive}, *messages]
+
+
+_THINK_BLOCK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+_UNCLOSED_THINK_RE = re.compile(r"<think>.*\Z", re.DOTALL | re.IGNORECASE)
+
+
+def _strip_reasoning(text: str) -> str:
+    """Remove a reasoning model's <think>...</think> block from the reply.
+    Also drops a <think> that was never closed -- that happens when the
+    reasoning ran into the max_tokens cap, and everything after it is scratch
+    thinking, not an answer -- leaving an empty string for the caller to
+    handle with its fallback."""
+    text = _THINK_BLOCK_RE.sub("", text)
+    text = _UNCLOSED_THINK_RE.sub("", text)
+    return text.strip()
 
 
 _SENTENCE_END_RE = re.compile(r"^(.*[.!?])[^.!?]*$", re.DOTALL)
@@ -166,9 +189,14 @@ async def generate_reply(session: CallSession) -> str:
 
     response = await _create_completion(messages, max_tokens=220, temperature=0.4)
     choice = response.choices[0]
-    text = (choice.message.content or "").strip()
+    text = _strip_reasoning((choice.message.content or "").strip())
     if choice.finish_reason == "length":
         text = _trim_to_complete_sentence(text) or text
+    if not text:
+        # A reasoning model spent its whole token budget thinking and never
+        # reached an answer -- ask the caller to repeat rather than speak the
+        # scratch reasoning or dead air.
+        return REPEAT_FALLBACK
 
     # The model doesn't reliably follow the "don't re-pitch once they're done"
     # guideline on its own (a known limitation at this model size). Detecting
@@ -221,7 +249,10 @@ async def generate_greeting(session: CallSession, weather_blurb: str | None) -> 
 
     response = await _create_completion(messages, max_tokens=150, temperature=0.5)
     choice = response.choices[0]
-    text = (choice.message.content or "").strip()
+    text = _strip_reasoning((choice.message.content or "").strip())
     if choice.finish_reason == "length":
         text = _trim_to_complete_sentence(text) or text
+    if not text:
+        first_name = (context.get("full_name") or "there").split()[0]
+        return f"Hi {first_name}, thanks for calling DemoTel. How can I help you today?"
     return text

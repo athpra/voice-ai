@@ -33,6 +33,14 @@ class Settings(BaseSettings):
     caii_base_url: str = ""  # e.g. https://<domain>/namespaces/serving-default/endpoints/<endpoint>/v1
     caii_api_key: str = ""
     caii_model_name: str = "meta/llama-3.1-8b-instruct"
+    # Reasoning ("thinking") models -- e.g. NVIDIA Nemotron -- emit a
+    # <think>...</think> block before their answer. That's pure latency and
+    # wasted tokens for a phone call, and if the block gets truncated by
+    # max_tokens the caller ends up hearing the model's scratch reasoning.
+    # Set this to the directive your model uses to disable it and it's sent
+    # as a leading system message: "detailed thinking off" for Llama-Nemotron,
+    # "/no_think" for Nemotron Nano v2. Leave blank for non-reasoning models.
+    caii_thinking_directive: str = ""
 
     # Cloudera AI Inference Service -- Whisper/Riva STT endpoint (separate
     # deployment from the LLM above, so it gets its own base URL/model name)
