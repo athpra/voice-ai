@@ -193,25 +193,51 @@ def _is_near_duplicate(a: str, b: str) -> bool:
     return difflib.SequenceMatcher(None, a.lower(), b.lower()).ratio() >= _REPEAT_THRESHOLD
 
 
+def _reasoning_content(message) -> str:
+    """The `reasoning_content` field NVIDIA NIM adds to the message when its
+    reasoning parser is active -- not part of the OpenAI schema, so the SDK
+    tucks it into model_extra."""
+    extra = getattr(message, "model_extra", None) or {}
+    return (getattr(message, "reasoning_content", None) or extra.get("reasoning_content") or "").strip()
+
+
+_UNCLOSED_THINK_MARKER = re.compile(r"<think>(?!.*</think>)", re.DOTALL | re.IGNORECASE)
+
+
 def _spoken_text(choice) -> str:
     """Pull the answer to speak out of a completion choice, discarding any
     reasoning. Returns '' when nothing usable is left, so the caller can
     substitute a fallback line instead of speaking scratch reasoning or dead
     air."""
-    raw = (choice.message.content or "").strip()
+    message = choice.message
+    raw = (message.content or "").strip()
+    reasoning = _reasoning_content(message)
+    if not raw and choice.finish_reason == "stop" and reasoning:
+        # With reasoning disabled, some NIM parser builds still expect a
+        # <think> block and, not finding one, file the plain answer into
+        # reasoning_content while leaving content empty. A clean stop with an
+        # empty content field is that case -- recover the answer.
+        raw = reasoning
+
     text = _strip_reasoning(raw)
     if choice.finish_reason == "length":
-        if settings.caii_thinking_directive and "</think>" not in raw:
-            # A reasoning model ignored the 'thinking off' directive and ran
-            # past the token cap before closing a think tag -- what's here is
-            # untagged scratch reasoning with no answer in it.
-            logger.warning("LLM hit the token cap mid-reasoning; using fallback")
+        if _UNCLOSED_THINK_MARKER.search(raw):
+            # Reasoning opened a <think> and ran into the token cap before
+            # closing it -- there's no answer in here to salvage.
+            logger.warning("LLM hit the token cap inside an unclosed <think>; using fallback")
             return ""
         text = _trim_to_complete_sentence(text) or text
-    logger.info(
-        "LLM completion: finish_reason=%s reasoning_stripped=%s thinking_directive=%s",
-        choice.finish_reason, text != raw, bool(settings.caii_thinking_directive),
-    )
+
+    if not text:
+        logger.warning(
+            "LLM produced no usable answer: finish_reason=%s content=%r reasoning=%r",
+            choice.finish_reason, (message.content or "")[:300], reasoning[:300],
+        )
+    else:
+        logger.info(
+            "LLM completion: finish_reason=%s reasoning_stripped=%s recovered_from_reasoning_content=%s",
+            choice.finish_reason, text != raw, bool(not (message.content or "").strip() and text),
+        )
     return text
 
 
