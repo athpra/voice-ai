@@ -66,5 +66,20 @@ def test_spoken_text_discards_unclosed_think_on_truncation():
     assert _spoken_text(choice) == ""
 
 
+def test_spoken_text_discards_untagged_reasoning_that_blew_the_budget(monkeypatch):
+    # This model reasons in plain prose with no <think> tags. When it runs
+    # the whole token budget without reaching an answer, there's nothing to
+    # salvage -- fall back rather than speak the reasoning.
+    monkeypatch.setattr(settings, "caii_thinking_directive", "detailed thinking off")
+    reasoning = "We need to greet Athul and mention the weather. Let's craft a natural reply."
+    assert _spoken_text(_choice(reasoning, finish_reason="length")) == ""
+
+
+def test_spoken_text_keeps_answer_after_close_tag_even_when_truncated(monkeypatch):
+    monkeypatch.setattr(settings, "caii_thinking_directive", "detailed thinking off")
+    raw = "figuring out the reply\n</think>\n\nHi Athul, you have plenty of data left. You can also"
+    assert _spoken_text(_choice(raw, finish_reason="length")) == "Hi Athul, you have plenty of data left."
+
+
 def test_spoken_text_passes_clean_answer_through():
     assert _spoken_text(_choice("Hi Athul, how are you today?")) == "Hi Athul, how are you today?"

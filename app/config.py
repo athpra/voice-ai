@@ -37,10 +37,17 @@ class Settings(BaseSettings):
     # <think>...</think> block before their answer. That's pure latency and
     # wasted tokens for a phone call, and if the block gets truncated by
     # max_tokens the caller ends up hearing the model's scratch reasoning.
-    # Set this to the directive your model uses to disable it and it's sent
-    # as a leading system message: "detailed thinking off" for Llama-Nemotron,
-    # "/no_think" for Nemotron Nano v2. Leave blank for non-reasoning models.
+    # Set this to the directive your model uses to disable it and it's folded
+    # into the front of the system prompt: "detailed thinking off" for
+    # Llama-Nemotron, "/no_think" for Nemotron Nano v2. Leave blank for
+    # non-reasoning models.
     caii_thinking_directive: str = ""
+    # Reasoning models need room to finish thinking (and emit the closing
+    # </think> we strip on) before the answer -- a tight cap just truncates
+    # them mid-thought. Generous by design; a real 1-2 sentence reply stops
+    # well short of it. When a reasoning model still blows past this without
+    # reaching an answer, the turn falls back to a canned line.
+    caii_max_output_tokens: int = 1024
 
     # Cloudera AI Inference Service -- Whisper/Riva STT endpoint (separate
     # deployment from the LLM above, so it gets its own base URL/model name)

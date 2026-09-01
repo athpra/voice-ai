@@ -201,9 +201,6 @@ def _reasoning_content(message) -> str:
     return (getattr(message, "reasoning_content", None) or extra.get("reasoning_content") or "").strip()
 
 
-_UNCLOSED_THINK_MARKER = re.compile(r"<think>(?!.*</think>)", re.DOTALL | re.IGNORECASE)
-
-
 def _spoken_text(choice) -> str:
     """Pull the answer to speak out of a completion choice, discarding any
     reasoning. Returns '' when nothing usable is left, so the caller can
@@ -221,10 +218,13 @@ def _spoken_text(choice) -> str:
 
     text = _strip_reasoning(raw)
     if choice.finish_reason == "length":
-        if _UNCLOSED_THINK_MARKER.search(raw):
-            # Reasoning opened a <think> and ran into the token cap before
-            # closing it -- there's no answer in here to salvage.
-            logger.warning("LLM hit the token cap inside an unclosed <think>; using fallback")
+        if settings.caii_thinking_directive and "</think>" not in raw:
+            # This model reasons in plain prose (no <think> tags) and ignored
+            # the 'thinking off' directive; it has now run through the whole
+            # (generous) token budget without ever reaching the answer. There
+            # is nothing to salvage -- a real reply for this app is 1-2
+            # sentences and never gets near the cap.
+            logger.warning("Reasoning model exhausted the token budget without producing an answer; using fallback")
             return ""
         text = _trim_to_complete_sentence(text) or text
 
@@ -252,7 +252,9 @@ async def generate_reply(session: CallSession) -> str:
         *session.history,
     ]
 
-    response = await _create_completion(messages, max_tokens=220, temperature=0.4)
+    response = await _create_completion(
+        messages, max_tokens=settings.caii_max_output_tokens, temperature=0.4
+    )
     text = _spoken_text(response.choices[0])
     if not text:
         return REPEAT_FALLBACK
@@ -308,7 +310,9 @@ async def generate_greeting(session: CallSession, weather_blurb: str | None) -> 
         {"role": "user", "content": instruction},
     ]
 
-    response = await _create_completion(messages, max_tokens=150, temperature=0.5)
+    response = await _create_completion(
+        messages, max_tokens=settings.caii_max_output_tokens, temperature=0.5
+    )
     text = _spoken_text(response.choices[0])
     if not text:
         first_name = (context.get("full_name") or "there").split()[0]
