@@ -1,5 +1,6 @@
 import asyncio
 import difflib
+import logging
 import re
 from datetime import date
 
@@ -7,6 +8,8 @@ from openai import AsyncOpenAI
 
 from app.call_session import CallSession
 from app.config import settings
+
+logger = logging.getLogger("voice_ai_agent.llm")
 
 PLAN_CATALOG = """- Basic 5GB -- $25/mo
 - Standard 15GB -- $40/mo
@@ -78,7 +81,7 @@ async def _create_completion(messages: list[dict], max_tokens: int, temperature:
     persistent failure."""
     kwargs: dict = {
         "model": settings.caii_model_name,
-        "messages": _with_thinking_directive(messages),
+        "messages": messages,
         "temperature": temperature,
         "frequency_penalty": _FREQUENCY_PENALTY,
     }
@@ -102,25 +105,37 @@ async def _create_completion(messages: list[dict], max_tokens: int, temperature:
     raise last_exc
 
 
-def _with_thinking_directive(messages: list[dict]) -> list[dict]:
-    """Prepend the model's 'disable reasoning' directive as its own system
-    message when one is configured (see settings.caii_thinking_directive)."""
-    if not settings.caii_thinking_directive:
-        return messages
-    return [{"role": "system", "content": settings.caii_thinking_directive}, *messages]
+def _apply_thinking_directive(system_prompt: str) -> str:
+    """Nemotron-style reasoning models take their 'no reasoning' switch as a
+    line in the system prompt itself (e.g. "detailed thinking off", or
+    "/no_think" on Nemotron Nano v2). A second, separate system message is
+    not reliably honored by the chat template, so fold the directive into
+    the front of the real system prompt instead."""
+    directive = settings.caii_thinking_directive.strip()
+    if not directive:
+        return system_prompt
+    return f"{directive}\n\n{system_prompt}"
 
 
 _THINK_BLOCK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+# NVIDIA NIM's reasoning parser consumes the opening <think> (it's a template
+# token, not generated text) but the model still emits a literal </think> to
+# close -- so a bare </think> with no opener means everything before it is
+# reasoning.
+_UP_TO_THINK_CLOSE_RE = re.compile(r"^.*?</think>", re.DOTALL | re.IGNORECASE)
 _UNCLOSED_THINK_RE = re.compile(r"<think>.*\Z", re.DOTALL | re.IGNORECASE)
 
 
 def _strip_reasoning(text: str) -> str:
-    """Remove a reasoning model's <think>...</think> block from the reply.
-    Also drops a <think> that was never closed -- that happens when the
-    reasoning ran into the max_tokens cap, and everything after it is scratch
-    thinking, not an answer -- leaving an empty string for the caller to
-    handle with its fallback."""
+    """Remove a reasoning model's think block from the reply, whether it
+    arrives as a full <think>...</think> pair, as reasoning terminated by a
+    bare </think> (NIM strips the opener), or as an unclosed <think> that ran
+    into the max_tokens cap. The last case leaves an empty string for the
+    caller to handle with its fallback. Untagged reasoning (the model ignored
+    the 'thinking off' directive and never emitted a tag) can't be separated
+    here -- the callers catch that via finish_reason instead."""
     text = _THINK_BLOCK_RE.sub("", text)
+    text = _UP_TO_THINK_CLOSE_RE.sub("", text)
     text = _UNCLOSED_THINK_RE.sub("", text)
     return text.strip()
 
@@ -178,9 +193,33 @@ def _is_near_duplicate(a: str, b: str) -> bool:
     return difflib.SequenceMatcher(None, a.lower(), b.lower()).ratio() >= _REPEAT_THRESHOLD
 
 
+def _spoken_text(choice) -> str:
+    """Pull the answer to speak out of a completion choice, discarding any
+    reasoning. Returns '' when nothing usable is left, so the caller can
+    substitute a fallback line instead of speaking scratch reasoning or dead
+    air."""
+    raw = (choice.message.content or "").strip()
+    text = _strip_reasoning(raw)
+    if choice.finish_reason == "length":
+        if settings.caii_thinking_directive and "</think>" not in raw:
+            # A reasoning model ignored the 'thinking off' directive and ran
+            # past the token cap before closing a think tag -- what's here is
+            # untagged scratch reasoning with no answer in it.
+            logger.warning("LLM hit the token cap mid-reasoning; using fallback")
+            return ""
+        text = _trim_to_complete_sentence(text) or text
+    logger.info(
+        "LLM completion: finish_reason=%s reasoning_stripped=%s thinking_directive=%s",
+        choice.finish_reason, text != raw, bool(settings.caii_thinking_directive),
+    )
+    return text
+
+
 async def generate_reply(session: CallSession) -> str:
-    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
-        context_block=_format_context(session.customer_context), plan_catalog=PLAN_CATALOG
+    system_prompt = _apply_thinking_directive(
+        SYSTEM_PROMPT_TEMPLATE.format(
+            context_block=_format_context(session.customer_context), plan_catalog=PLAN_CATALOG
+        )
     )
     messages = [
         {"role": "system", "content": system_prompt},
@@ -188,14 +227,8 @@ async def generate_reply(session: CallSession) -> str:
     ]
 
     response = await _create_completion(messages, max_tokens=220, temperature=0.4)
-    choice = response.choices[0]
-    text = _strip_reasoning((choice.message.content or "").strip())
-    if choice.finish_reason == "length":
-        text = _trim_to_complete_sentence(text) or text
+    text = _spoken_text(response.choices[0])
     if not text:
-        # A reasoning model spent its whole token budget thinking and never
-        # reached an answer -- ask the caller to repeat rather than speak the
-        # scratch reasoning or dead air.
         return REPEAT_FALLBACK
 
     # The model doesn't reliably follow the "don't re-pitch once they're done"
@@ -233,7 +266,9 @@ async def generate_greeting(session: CallSession, weather_blurb: str | None) -> 
     deliberately kept out of session.history; the caller is responsible for
     recording the returned greeting as the first assistant turn."""
     context = session.customer_context
-    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(context_block=_format_context(context), plan_catalog=PLAN_CATALOG)
+    system_prompt = _apply_thinking_directive(
+        SYSTEM_PROMPT_TEMPLATE.format(context_block=_format_context(context), plan_catalog=PLAN_CATALOG)
+    )
     years = _years_as_customer(context.get("customer_since_date", ""))
     weather_line = f" Naturally mention today's weather where they are: {weather_blurb}." if weather_blurb else ""
     instruction = (
@@ -248,10 +283,7 @@ async def generate_greeting(session: CallSession, weather_blurb: str | None) -> 
     ]
 
     response = await _create_completion(messages, max_tokens=150, temperature=0.5)
-    choice = response.choices[0]
-    text = _strip_reasoning((choice.message.content or "").strip())
-    if choice.finish_reason == "length":
-        text = _trim_to_complete_sentence(text) or text
+    text = _spoken_text(response.choices[0])
     if not text:
         first_name = (context.get("full_name") or "there").split()[0]
         return f"Hi {first_name}, thanks for calling DemoTel. How can I help you today?"
