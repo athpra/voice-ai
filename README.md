@@ -1,5 +1,14 @@
 # Telecom Voice AI Agent Demo
 
+
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](requirements.txt)
+[![Cloudera AI](https://img.shields.io/badge/Cloudera%20AI-Inference%20Service-F96702.svg)](.project-metadata.yaml)
+[![Stars](https://img.shields.io/github/stars/athpra/voice-ai?logo=github)](https://github.com/athpra/voice-ai/stargazers)
+[![Forks](https://img.shields.io/github/forks/athpra/voice-ai?logo=github)](https://github.com/athpra/voice-ai/network/members)
+[![Watchers](https://img.shields.io/github/watchers/athpra/voice-ai?logo=github)](https://github.com/athpra/voice-ai/watchers)
+
+
 A demo showing Cloudera AI powering a real-time voice agent: a caller dials a
 phone number, their speech is transcribed live, enriched with their account
 context (looked up by phone number), sent to a local LLM served by Cloudera
@@ -213,3 +222,16 @@ What still needs your credentials to verify:
   (`SILENCE_RMS_THRESHOLD`, `SILENCE_DURATION_MS`, `MIN_SPEECH_MS`) are
   heuristic starting points, not calibrated against a real phone line's noise
   floor — expect to tune them once you're testing with actual calls.
+
+## License
+
+Copyright 2026 Cloudera, Inc.
+
+Licensed under the Apache License, Version 2.0. See [`LICENSE`](LICENSE).
+
+## Disclaimer
+
+*This blueprint is intended for Proof-of-Concept and research use only. It is not designed for production deployment. Use in production environments is at the user's own risk. The authors and contributors accept no liability for operational impacts or damages.*
+
+
+
