@@ -1,5 +1,12 @@
 # Telecom Voice AI Agent Demo
 
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](requirements.txt)
+[![Cloudera AI](https://img.shields.io/badge/Cloudera%20AI-Inference%20Service-F96702.svg)](.project-metadata.yaml)
+[![Stars](https://img.shields.io/github/stars/athpra/voice-ai?logo=github)](https://github.com/athpra/voice-ai/stargazers)
+[![Forks](https://img.shields.io/github/forks/athpra/voice-ai?logo=github)](https://github.com/athpra/voice-ai/network/members)
+[![Watchers](https://img.shields.io/github/watchers/athpra/voice-ai?logo=github)](https://github.com/athpra/voice-ai/watchers)
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -13,6 +20,8 @@
 - [Prerequisites](#prerequisites)
 - [Hardware Requirements](#hardware-requirements)
 - [Documentation](#documentation)
+- [License](#license)
+- [Disclaimer](#disclaimer)
 
 ## Overview
 
@@ -166,3 +175,13 @@ the full breakdown.
 - [`deploy/cml-deployment.md`](deploy/cml-deployment.md) — CML deployment
   steps and hardware sizing
 - [CML Applications documentation](https://docs.cloudera.com/machine-learning/cloud/applications/topics/ml-applications.html)
+
+## License
+
+Copyright 2026 Cloudera, Inc.
+
+Licensed under the Apache License, Version 2.0. See [`LICENSE`](LICENSE).
+
+## Disclaimer
+
+*This blueprint is intended for Proof-of-Concept and research use only. It is not designed for production deployment. Use in production environments is at the user's own risk. The authors and contributors accept no liability for operational impacts or damages.*
