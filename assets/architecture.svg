@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" font-family="Helvetica, Arial, sans-serif">
+  <rect x="0" y="0" width="960" height="560" fill="#ffffff"/>
+
+  <!-- Caller -->
+  <rect x="30" y="250" width="140" height="60" rx="8" fill="#f4f4f4" stroke="#333333" stroke-width="1.5"/>
+  <text x="100" y="285" text-anchor="middle" font-size="15" fill="#222222">Caller</text>
+
+  <!-- Telephony provider -->
+  <rect x="220" y="250" width="190" height="60" rx="8" fill="#fde9d9" stroke="#c65911" stroke-width="1.5"/>
+  <text x="315" y="272" text-anchor="middle" font-size="13" fill="#222222">Telephony provider</text>
+  <text x="315" y="289" text-anchor="middle" font-size="10" fill="#555555">e.g. Twilio (Voice + Media Streams)</text>
+  <text x="315" y="303" text-anchor="middle" font-size="9" fill="#777777">swappable for another provider</text>
+
+  <!-- CML Application boundary -->
+  <rect x="460" y="60" width="470" height="440" rx="10" fill="#eef4fb" stroke="#2f6fa8" stroke-width="1.5"/>
+  <text x="480" y="86" font-size="13" fill="#2f6fa8" font-weight="bold">CML Application (FastAPI, this repo)</text>
+
+  <!-- POST /voice -->
+  <rect x="480" y="105" width="200" height="46" rx="6" fill="#ffffff" stroke="#2f6fa8" stroke-width="1.2"/>
+  <text x="580" y="132" text-anchor="middle" font-size="12" fill="#222222">POST /voice → TwiML</text>
+
+  <!-- WS /media-stream orchestrator -->
+  <rect x="480" y="165" width="430" height="300" rx="8" fill="#ffffff" stroke="#2f6fa8" stroke-width="1.2"/>
+  <text x="500" y="188" font-size="12" fill="#2f6fa8" font-weight="bold">WS /media-stream — call orchestration</text>
+
+  <!-- Customer lookup -->
+  <rect x="500" y="205" width="180" height="50" rx="6" fill="#f4f4f4" stroke="#555555" stroke-width="1"/>
+  <text x="590" y="226" text-anchor="middle" font-size="11" fill="#222222">1. Look up caller</text>
+  <text x="590" y="241" text-anchor="middle" font-size="10" fill="#555555">app/data/customers.db (mock)</text>
+
+  <!-- STT -->
+  <rect x="500" y="270" width="180" height="50" rx="6" fill="#eaf6ec" stroke="#3a8f4c" stroke-width="1"/>
+  <text x="590" y="291" text-anchor="middle" font-size="11" fill="#222222">2. STT provider</text>
+  <text x="590" y="306" text-anchor="middle" font-size="10" fill="#555555">Deepgram / Cartesia / Cloudera Whisper</text>
+
+  <!-- LLM -->
+  <rect x="710" y="270" width="180" height="50" rx="6" fill="#f1e9fb" stroke="#6a3fa0" stroke-width="1"/>
+  <text x="800" y="291" text-anchor="middle" font-size="11" fill="#222222">3. LLM</text>
+  <text x="800" y="306" text-anchor="middle" font-size="10" fill="#555555">Cloudera AI Inference Service</text>
+
+  <!-- TTS -->
+  <rect x="500" y="335" width="180" height="50" rx="6" fill="#eaf6ec" stroke="#3a8f4c" stroke-width="1"/>
+  <text x="590" y="356" text-anchor="middle" font-size="11" fill="#222222">4. TTS provider</text>
+  <text x="590" y="371" text-anchor="middle" font-size="10" fill="#555555">e.g. Cartesia</text>
+
+  <!-- Dashboard -->
+  <rect x="710" y="335" width="180" height="50" rx="6" fill="#fdf3d0" stroke="#a68b1f" stroke-width="1"/>
+  <text x="800" y="356" text-anchor="middle" font-size="11" fill="#222222">Live dashboard</text>
+  <text x="800" y="371" text-anchor="middle" font-size="10" fill="#555555">GET /dashboard, WS /dashboard-events</text>
+
+  <!-- GET /health -->
+  <rect x="480" y="410" width="200" height="40" rx="6" fill="#ffffff" stroke="#2f6fa8" stroke-width="1.2"/>
+  <text x="580" y="435" text-anchor="middle" font-size="12" fill="#222222">GET /health</text>
+
+  <!-- Arrows -->
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#444444"/>
+    </marker>
+  </defs>
+
+  <line x1="170" y1="280" x2="225" y2="280" stroke="#444444" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="197" y="270" text-anchor="middle" font-size="9" fill="#555555">PSTN call</text>
+
+  <line x1="410" y1="280" x2="455" y2="280" stroke="#444444" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="427" y="268" text-anchor="middle" font-size="9" fill="#555555">wss://</text>
+  <text x="427" y="298" text-anchor="middle" font-size="8" fill="#777777">mulaw/8kHz, both</text>
+  <text x="427" y="308" text-anchor="middle" font-size="8" fill="#777777">directions</text>
+
+  <line x1="590" y1="255" x2="590" y2="268" stroke="#444444" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <line x1="590" y1="320" x2="590" y2="333" stroke="#444444" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <line x1="680" y1="295" x2="708" y2="295" stroke="#444444" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="694" y="286" text-anchor="middle" font-size="8" fill="#777777">transcript</text>
+  <line x1="800" y1="320" x2="800" y2="270" stroke="#444444" stroke-width="1.2" marker-end="url(#arrow)" transform="translate(0,0)"/>
+  <line x1="710" y1="345" x2="702" y2="345" stroke="#444444" stroke-width="1.2"/>
+
+  <!-- Reply back down to caller -->
+  <path d="M500,360 C 250,430 150,340 100,312" fill="none" stroke="#444444" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+  <text x="270" y="425" text-anchor="middle" font-size="9" fill="#555555">spoken reply, back through the telephony provider to caller</text>
+
+  <!-- Legend -->
+  <text x="30" y="490" font-size="11" fill="#555555">Solid arrows: live call path.  Dashed arrow: TTS audio returned to the caller via the same media-stream socket.</text>
+  <text x="30" y="508" font-size="11" fill="#555555">Only the telephony, STT, and TTS providers are external services by default; the LLM and orchestration run in Cloudera AI.</text>
+  <text x="30" y="526" font-size="11" fill="#777777">Twilio here is a reference telephony integration, not a hard dependency; STT/TTS already sit behind swappable provider interfaces.</text>
+</svg>

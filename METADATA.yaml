@@ -1,0 +1,55 @@
+# Cloudera Blueprint catalog metadata
+# Populate fields used by the master blueprint website and internal catalog.
+# NOTE: several fields below (catalog_classification, industry_alignment,
+# tags) are a first pass -- confirm positioning before publishing.
+
+# --- Identity ---
+name: "Telecom Voice AI Agent Demo"
+slug: "telecom-voice-ai-agent-demo"
+description: "Real-time voice AI agent for phone-based customer support: transcribes live calls, looks up caller account context, generates a response with an LLM on Cloudera AI Inference Service, and speaks the reply back -- orchestrated end to end from a single CML Application."
+reprise_link: ""                             # TODO: no Reprise demo recorded yet
+
+# --- Classification (website filters) ---
+catalog_classification:
+  - Launchable (AMP)                         # Options: Enterprise Blueprint | Research | Launchable (AMP) | Developer Example
+launchable: true                             # true | false
+lifecycle_status: Active                     # e.g., Active | Deprecated
+
+# --- Industry & alignment ---
+industry: Telecom                            # e.g., General | Telecom | Financial Services | Healthcare & Life Sciences | Retail | Media | Physical AI & Robotics
+industry_alignment: "Vertical"               # Horizontal | Vertical -- the voice-agent pattern itself is horizontal, but the demo data/prompts are telecom-flavored
+target_vertical: "Telecom customer support"
+
+# --- Tags (website search & browse) ---
+tags:
+  - voice-ai
+  - speech-to-text
+  - text-to-speech
+  - conversational-ai
+  - twilio
+  - real-time
+  - customer-support
+  - telecom
+
+# --- Relationships ---
+product_mapping:                             # Cloudera products used
+  - Cloudera AI Inference Service
+  - Cloudera Machine Learning
+# model_dependencies:                          # Models, embeddings, or external AI services, if any. Comment out if none.
+#   - meta/llama-3.1-8b-instruct               # CAII_MODEL_NAME default; swappable, including reasoning models like nemotron-3-super-120b-a12b
+
+# --- Provenance ---
+publisher: cloudera                          # cloudera | partner-name
+source: Internal                             # Internal | Partner | NVIDIA Adaptation | Customer
+
+# --- Repository & assets ---
+public_github_link: "https://github.com/athpra/voice-ai"
+#private_github_link: ""                      # If applicable, original repo during development
+
+# --- Ownership ---
+maintainer_name: "Athul Prasad"
+
+# --- Dates ---
+date_created: "2026-07-23"
+date_updated: "2026-09-16"
+published_date: ""                           # Set once this blueprint is actually published to the catalog
