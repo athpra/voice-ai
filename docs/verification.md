@@ -41,3 +41,40 @@
   falls back to a canned line instead of speaking scratch reasoning -- expect
   occasional generic replies until the model's thinking-off directive is
   confirmed to work.
+
+## Known operational risk: `CAII_API_KEY` expiry
+
+Observed in production: every greeting and reply silently fell back to the
+generic/canned lines (`GENERIC_GREETING`, `LLM_FALLBACK_REPLY` in
+`app/twilio_gateway.py`) for an entire call. The application logs showed why
+-- both `generate_greeting()` and `generate_reply()` were throwing on every
+turn:
+
+```
+openai.AuthenticationError: Error code: 401 - {'message': 'Token has expired', ...}
+```
+
+**Root cause:** `CAII_API_KEY` had expired. A JWT copied from a workbench
+session had only a 1-hour gap between its `iat` and `exp` claims -- fine for
+an interactive session, not for a long-running CML Application, which will
+hit this the first time it's been up longer than the token's TTL.
+
+**Symptom is silent, not a crash:** because `generate_greeting`/
+`generate_reply` are called inside a `try/except Exception`, an expired
+token degrades the whole call to canned fallback lines rather than
+surfacing an obvious error to the caller or failing the Application --
+worth checking the logs for `AuthenticationError` whenever replies look
+suspiciously generic, before assuming it's a prompt or reasoning-model
+issue like the ones above.
+
+**Fix:** issue a fresh `CAII_API_KEY` and update it in the CML
+Application's environment variables, then fully stop/start the Application.
+
+**Unresolved as of this writing:** whether Cloudera AI Inference Service
+offers a longer-lived/non-expiring service credential for this endpoint
+(as opposed to a short-TTL session token), and/or whether the app should
+add token-refresh logic -- `_client = AsyncOpenAI(...)` in
+`app/llm/cloudera_inference.py` is constructed once at import time from a
+static key, so even a longer-but-finite TTL will eventually need this.
+Confirm the intended credential type with your CDP/CML admin before relying
+on this in anything beyond a demo.
